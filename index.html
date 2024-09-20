@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Face Authentication</title>
+</head>
+<body>
+  <h1>Face Authentication using Webcam</h1>
+  <video id="video" width="640" height="480" autoplay></video>
+  <button id="startButton">Start Video Recording</button>
+  <button id="stopButton">Stop Recording</button>
+  <video id="recordedVideo" controls></video>
+
+  <script>
+    let video = document.getElementById('video');
+    let startButton = document.getElementById('startButton');
+    let stopButton = document.getElementById('stopButton');
+    let recordedVideo = document.getElementById('recordedVideo');
+    let mediaRecorder;
+    let recordedChunks = [];
+
+    // Access webcam video
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => {
+        video.srcObject = stream;
+        mediaRecorder = new MediaRecorder(stream);
+
+        // Start recording video
+        startButton.addEventListener('click', () => {
+          recordedChunks = [];
+          mediaRecorder.start();
+        });
+
+        // Stop recording and save video
+        stopButton.addEventListener('click', () => {
+          mediaRecorder.stop();
+        });
+
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            recordedChunks.push(event.data);
+          }
+        };
+
+        mediaRecorder.onstop = () => {
+          let blob = new Blob(recordedChunks, {
+            type: 'video/webm'
+          });
+          recordedVideo.src = URL.createObjectURL(blob);
+          // Send blob to backend for AI model processing
+          sendToBackend(blob);
+        };
+      });
+
+    // Function to send video to backend (e.g., via API call)
+    function sendToBackend(videoBlob) {
+      let formData = new FormData();
+      formData.append('video', videoBlob, 'face_authentication.webm');
+      fetch('/process-video', {
+        method: 'POST',
+        body: formData
+      }).then(response => response.json())
+        .then(result => console.log(result))
+        .catch(error => console.error('Error:', error));
+    }
+  </script>
+</body>
+</html>
